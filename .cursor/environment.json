@@ -1,0 +1,13 @@
+{
+  "name": "Aurora Framework",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "tomcat-log",
+      "command": "touch /opt/tomcat9/logs/catalina.out && tail -n +1 -F /opt/tomcat9/logs/catalina.out"
+    }
+  ],
+  "ports": [8080]
+}
