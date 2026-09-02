@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pod拨打策略 · 知识图谱</title>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2332;
+    --ink: #e7ecf3;
+    --sub: #8b98a8;
+    --line: #2d3a4d;
+    --brand: #4d8bf5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header p { font-size: 13px; color: var(--sub); }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-left: auto;
+  }
+  .toolbar input {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    width: 180px;
+  }
+  .toolbar button, .chip {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--sub);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: .15s;
+  }
+  .toolbar button:hover { border-color: var(--brand); color: var(--ink); }
+  .chip.active { background: #1e3a5f; border-color: var(--brand); color: var(--brand); }
+  main { flex: 1; display: flex; min-height: 0; }
+  #graph { flex: 1; background: radial-gradient(ellipse at center, #151d28 0%, var(--bg) 70%); }
+  aside {
+    width: 320px;
+    border-left: 1px solid var(--line);
+    background: var(--panel);
+    padding: 16px;
+    overflow-y: auto;
+    font-size: 13px;
+  }
+  aside h2 { font-size: 15px; margin-bottom: 8px; }
+  aside .type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  aside .desc { color: var(--sub); line-height: 1.6; margin: 10px 0; }
+  aside .props { margin-top: 12px; }
+  aside .prop-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+    gap: 8px;
+  }
+  aside .prop-k { color: var(--sub); flex-shrink: 0; }
+  aside .prop-v { text-align: right; word-break: break-all; }
+  aside .links { margin-top: 14px; }
+  aside .link-item {
+    padding: 6px 8px;
+    background: var(--bg);
+    border-radius: 6px;
+    margin: 4px 0;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  aside .link-item:hover { border-left: 3px solid var(--brand); padding-left: 5px; }
+  .legend {
+    padding: 10px 20px;
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--sub);
+  }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend i {
+    width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  }
+  .placeholder { color: var(--sub); padding-top: 40px; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Pod 拨打策略 · 知识图谱</h1>
+    <p>基于本体 v01 · 金条外呼言犀赛马方案 · 拖拽/缩放/点击节点查看详情</p>
+  </div>
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="搜索节点…">
+    <button id="fit">适应画布</button>
+    <button id="reset">重置视图</button>
+  </div>
+</header>
+<div class="legend" id="legend"></div>
+<main>
+  <div id="graph"></div>
+  <aside id="detail">
+    <div class="placeholder">点击图谱中的节点<br>查看属性与关系</div>
+  </aside>
+</main>
+
+<script>
+const GROUPS = {
+  campaign:   { label: '外呼战役', color: '#f0b429', shape: 'box' },
+  strategy:   { label: '拨打策略', color: '#4d8bf5', shape: 'box' },
+  touchpoint: { label: '触点类型', color: '#2ecc9a', shape: 'ellipse' },
+  model:      { label: '预测模型', color: '#a78bfa', shape: 'diamond' },
+  rule:       { label: '调度/停打规则', color: '#f97316', shape: 'box' },
+  insight:    { label: '洞察', color: '#ef4444', shape: 'star' },
+  metric:     { label: '指标观测', color: '#38bdf8', shape: 'dot' },
+  dispatch:   { label: '调度流水线', color: '#06b6d4', shape: 'box' },
+  experiment: { label: '实验', color: '#ec4899', shape: 'hexagon' },
+  task:       { label: '落地待办', color: '#84cc16', shape: 'box' },
+  timeslot:   { label: '时段/角色', color: '#fb923c', shape: 'ellipse' },
+  data:       { label: '数据质量', color: '#64748b', shape: 'triangle' },
+  ontology:   { label: '本体类', color: '#475569', shape: 'ellipse' },
+};
+
+const nodes = [
+  // Campaign & Strategy
+  { id: 'jintiao', label: '金条外呼', group: 'campaign', title: '外呼战役实例', desc: '近35天真实话单，日产能20万', props: { dataWindowDays: 35, dailyCapacity: 200000 } },
+  { id: 'horse_v2', label: '赛马方案 v2', group: 'strategy', title: 'ModelBasedStrategy', desc: '三模型 + 统一 priority 调度', props: { schedulingMode: 'unified_priority', modelCount: 3 } },
+  { id: 'yanxi', label: '言犀现行策略', group: 'strategy', title: 'LegacyStrategy', desc: '5维硬编码，4条独立管线，规则顺序无统一打分', props: { dimensionCount: 5, schedulingMode: 'rule_priority' } },
+
+  // Touchpoints
+  { id: 'tp_first', label: '首播', group: 'touchpoint', desc: 'dialed_before = 0', props: { connectRate: '27.47%', sample: '127.7万' } },
+  { id: 'tp_redial_conn', label: '已接通复播', group: 'touchpoint', desc: 'dialed≥1 且 conn≥1', props: { connectRate: '43.24%', sample: '83.4万' } },
+  { id: 'tp_redial_noconn', label: '未接通复播', group: 'touchpoint', desc: 'dialed≥1 且 conn=0', props: { connectRate: '10.13%', sample: '235.7万' } },
+
+  // Models
+  { id: 'm_timeslot', label: '时点模型', group: 'model', desc: '首播上午9-12精选时段', props: { lift: '+9.59pp', target: '首播' } },
+  { id: 'm_intent', label: '意向模型', group: 'model', desc: '已接通攻转化，砍低意向剩饭', props: { auc: 0.80, target: '已接通复播' } },
+  { id: 'm_connect', label: '接通模型', group: 'model', desc: '未接通间隔+停打决策', props: { auc: 0.73, target: '未接通复播' } },
+
+  // Rules
+  { id: 'r_5dim', label: '5维硬编码', group: 'rule', desc: '触点×生命周期×拨打历史×意向×间隔' },
+  { id: 'r_evening', label: '18点兜底剩饭', group: 'rule', desc: '晚间集中补打筛剩低质用户' },
+  { id: 'r_intent_stop', label: '低意向停打', group: 'rule', desc: 'INTENT_STOP_THRESHOLD 砍掉尾部' },
+  { id: 'r_round_stop', label: '第5次+停打', group: 'rule', desc: '接通率<5.2% 停打区' },
+
+  // Insights
+  { id: 'ins_leftover', label: '剩饭编排洞察', group: 'insight', desc: '18/19点转化率0.005-0.007%，根因是编排非时段', props: { severity: 'critical', rootCause: '筛剩低质用户排到晚间' } },
+  { id: 'ins_interval', label: '间隔反转洞察', group: 'insight', desc: '第1次等48-72h最优，第2次起<12h当天追', props: { rootCause: '分层前混淆用户难度与间隔效应' } },
+  { id: 'ins_leak', label: '标签泄露', group: 'data', desc: 'jtrk累计含本通，life_no窗口函数修复', props: { symptom: '已接通复播接通率100%异常' } },
+
+  // Dispatch
+  { id: 'dispatch', label: '三线统一调度', group: 'dispatch', desc: '候选池→分流→打分→priority排队→截断20万→时段配平', props: { formula: 'P(接通)×P(转化)×价值' } },
+  { id: 'calllist', label: '次日拨打清单', group: 'dispatch', desc: '约20万条，带时段分配' },
+
+  // Metrics
+  { id: 'met_lift', label: '首播时点提升', group: 'metric', props: { liftPp: '+9.59pp', baseline: '29.13%', hit: '38.72%' } },
+  { id: 'met_round1', label: '第1次复拨48-72h', group: 'metric', props: { connectRate: '17.35%', vs_yanxi: '打太急' } },
+  { id: 'met_round2', label: '第2次复拨<12h', group: 'metric', props: { connectRate: '10.75%', vs_yanxi: '打太晚' } },
+
+  // Time slots
+  { id: 'slot_morning', label: '09:40-12:29', group: 'timeslot', desc: '黄金意向+高价值复拨', props: { role: 'GoldenIntent' } },
+  { id: 'slot_afternoon', label: '14:00-16:55', group: 'timeslot', desc: '优质时段', props: { role: 'Quality' } },
+  { id: 'slot_evening', label: '18:00-20:59', group: 'timeslot', desc: '兜底剩饭时段', props: { role: 'LeftoverSink' } },
+
+  // Experiment & Tasks
+  { id: 'exp', label: '10天赛马实验', group: 'experiment', desc: '实验组三模型 vs 对照组言犀，15天后比名转', props: { exploreTraffic: '10%' } },
+  { id: 'task_norm', label: 'priority归一化', group: 'task', desc: '防止已接通复播垄断清单', props: { priority: '最高' } },
+  { id: 'task_stop', label: '停打阈值标定', group: 'task', props: { priority: '高' } },
+  { id: 'task_r1', label: '第1次48-72h验证', group: 'task', props: { priority: '高' } },
+  { id: 'task_align', label: '复拨圈选全天拉齐', group: 'task', props: { priority: '高' } },
+
+  // Ontology classes (schema layer)
+  { id: 'cls_strategy', label: 'CallStrategy', group: 'ontology', desc: '拨打策略抽象类' },
+  { id: 'cls_touchpoint', label: 'TouchpointType', group: 'ontology', desc: '触点类型抽象类' },
+  { id: 'cls_model', label: 'PredictiveModel', group: 'ontology', desc: '预测模型抽象类' },
+];
+
+const edges = [
+  // Campaign
+  { from: 'jintiao', to: 'horse_v2', label: '采用策略', arrows: 'to' },
+  { from: 'jintiao', to: 'yanxi', label: '对照基准', arrows: 'to', dashes: true },
+
+  // Strategy inheritance (schema)
+  { from: 'horse_v2', to: 'cls_strategy', label: 'isA', arrows: 'to', dashes: true, color: { opacity: 0.4 } },
+  { from: 'yanxi', to: 'cls_strategy', label: 'isA', arrows: 'to', dashes: true, color: { opacity: 0.4 } },
+
+  // Models
+  { from: 'horse_v2', to: 'm_timeslot', label: 'usesModel', arrows: 'to' },
+  { from: 'horse_v2', to: 'm_intent', label: 'usesModel', arrows: 'to' },
+  { from: 'horse_v2', to: 'm_connect', label: 'usesModel', arrows: 'to' },
+  { from: 'm_timeslot', to: 'tp_first', label: 'appliesTo', arrows: 'to' },
+  { from: 'm_intent', to: 'tp_redial_conn', label: 'appliesTo', arrows: 'to' },
+  { from: 'm_connect', to: 'tp_redial_noconn', label: 'appliesTo', arrows: 'to' },
+
+  // Touchpoint schema
+  { from: 'tp_first', to: 'cls_touchpoint', label: 'isA', arrows: 'to', dashes: true, color: { opacity: 0.4 } },
+  { from: 'tp_redial_conn', to: 'cls_touchpoint', label: 'isA', arrows: 'to', dashes: true, color: { opacity: 0.4 } },
+  { from: 'tp_redial_noconn', to: 'cls_touchpoint', label: 'isA', arrows: 'to', dashes: true, color: { opacity: 0.4 } },
+  { from: 'm_timeslot', to: 'cls_model', label: 'isA', arrows: 'to', dashes: true, color: { opacity: 0.4 } },
+  { from: 'm_intent', to: 'cls_model', label: 'isA', arrows: 'to', dashes: true, color: { opacity: 0.4 } },
+  { from: 'm_connect', to: 'cls_model', label: 'isA', arrows: 'to', dashes: true, color: { opacity: 0.4 } },
+
+  // Legacy rules
+  { from: 'yanxi', to: 'r_5dim', label: 'hasRule', arrows: 'to' },
+  { from: 'yanxi', to: 'r_evening', label: 'hasRule', arrows: 'to' },
+
+  // New strategy rules
+  { from: 'horse_v2', to: 'r_intent_stop', label: 'hasStopRule', arrows: 'to' },
+  { from: 'horse_v2', to: 'r_round_stop', label: 'hasStopRule', arrows: 'to' },
+
+  // Insights
+  { from: 'r_evening', to: 'ins_leftover', label: 'causes', arrows: 'to', color: { color: '#ef4444' } },
+  { from: 'yanxi', to: 'ins_leftover', label: 'producesInsight', arrows: 'to' },
+  { from: 'yanxi', to: 'ins_interval', label: 'producesInsight', arrows: 'to' },
+  { from: 'ins_leak', to: 'tp_first', label: 'affects', arrows: 'to', dashes: true },
+  { from: 'ins_leak', to: 'tp_redial_conn', label: 'affects', arrows: 'to', dashes: true },
+  { from: 'ins_leak', to: 'tp_redial_noconn', label: 'affects', arrows: 'to', dashes: true },
+
+  // Dispatch pipeline
+  { from: 'horse_v2', to: 'dispatch', label: 'executesVia', arrows: 'to' },
+  { from: 'dispatch', to: 'calllist', label: 'outputs', arrows: 'to' },
+  { from: 'dispatch', to: 'tp_first', label: 'routes', arrows: 'to', dashes: true },
+  { from: 'dispatch', to: 'tp_redial_conn', label: 'routes', arrows: 'to', dashes: true },
+  { from: 'dispatch', to: 'tp_redial_noconn', label: 'routes', arrows: 'to', dashes: true },
+
+  // Metrics linked
+  { from: 'm_timeslot', to: 'met_lift', label: 'observed', arrows: 'to' },
+  { from: 'm_connect', to: 'met_round1', label: 'observed', arrows: 'to' },
+  { from: 'm_connect', to: 'met_round2', label: 'observed', arrows: 'to' },
+  { from: 'tp_first', to: 'met_lift', label: 'metricOn', arrows: 'to', dashes: true },
+
+  // Time slots
+  { from: 'slot_morning', to: 'tp_first', label: '黄金时段', arrows: 'to', dashes: true },
+  { from: 'slot_morning', to: 'tp_redial_conn', label: '高意向优先', arrows: 'to', dashes: true },
+  { from: 'slot_evening', to: 'ins_leftover', label: '剩饭承接', arrows: 'to', color: { color: '#ef4444' } },
+  { from: 'slot_evening', to: 'tp_redial_noconn', label: '晚间补打', arrows: 'to', dashes: true },
+
+  // Remedy links
+  { from: 'ins_leftover', to: 'r_intent_stop', label: 'remedy', arrows: 'to', color: { color: '#2ecc9a' } },
+  { from: 'ins_leftover', to: 'dispatch', label: 'remedy', arrows: 'to', color: { color: '#2ecc9a' } },
+  { from: 'ins_interval', to: 'm_connect', label: 'remedy', arrows: 'to', color: { color: '#2ecc9a' } },
+  { from: 'ins_interval', to: 'r_round_stop', label: 'remedy', arrows: 'to', color: { color: '#2ecc9a' } },
+
+  // Experiment
+  { from: 'exp', to: 'horse_v2', label: 'treatment', arrows: 'to' },
+  { from: 'exp', to: 'yanxi', label: 'control', arrows: 'to' },
+  { from: 'exp', to: 'ins_leftover', label: 'validates', arrows: 'to' },
+
+  // Tasks
+  { from: 'horse_v2', to: 'task_norm', label: 'todo', arrows: 'to' },
+  { from: 'horse_v2', to: 'task_stop', label: 'todo', arrows: 'to' },
+  { from: 'horse_v2', to: 'task_r1', label: 'todo', arrows: 'to' },
+  { from: 'horse_v2', to: 'task_align', label: 'todo', arrows: 'to' },
+  { from: 'task_align', to: 'ins_leftover', label: 'addresses', arrows: 'to', dashes: true },
+  { from: 'task_norm', to: 'dispatch', label: 'addresses', arrows: 'to', dashes: true },
+];
+
+// Build vis datasets with group styling
+const visNodes = new vis.DataSet(nodes.map(n => ({
+  id: n.id,
+  label: n.label,
+  group: n.group,
+  title: n.title || n.label,
+  shape: GROUPS[n.group]?.shape || 'dot',
+  font: { color: '#e7ecf3', size: n.group === 'ontology' ? 11 : 13 },
+  size: n.group === 'insight' ? 22 : n.group === 'ontology' ? 14 : 18,
+  borderWidth: n.group === 'ontology' ? 1 : 2,
+  ...n
+})));
+
+const visEdges = new vis.DataSet(edges.map(e => ({
+  ...e,
+  font: { size: 10, color: '#8b98a8', strokeWidth: 0, align: 'middle' },
+  smooth: { type: 'dynamic' },
+  width: e.color?.color === '#ef4444' || e.color?.color === '#2ecc9a' ? 2 : 1,
+})));
+
+const container = document.getElementById('graph');
+const data = { nodes: visNodes, edges: visEdges };
+const options = {
+  groups: Object.fromEntries(Object.entries(GROUPS).map(([k, v]) => [k, {
+    color: { background: v.color, border: v.color, highlight: { background: v.color, border: '#fff' } },
+  }])),
+  physics: {
+    enabled: true,
+    barnesHut: { gravitationalConstant: -8000, springLength: 140, springConstant: 0.04 },
+    stabilization: { iterations: 200 },
+  },
+  interaction: { hover: true, tooltipDelay: 100, navigationButtons: true, keyboard: true },
+  edges: { color: { color: '#4a5568', highlight: '#4d8bf5' } },
+};
+
+const network = new vis.Network(container, data, options);
+
+// Legend
+const legendEl = document.getElementById('legend');
+Object.entries(GROUPS).forEach(([k, v]) => {
+  const span = document.createElement('span');
+  span.innerHTML = `<i style="background:${v.color}"></i>${v.label}`;
+  span.className = 'chip';
+  span.dataset.group = k;
+  span.onclick = () => toggleGroup(k, span);
+  legendEl.appendChild(span);
+});
+
+let hiddenGroups = new Set();
+function toggleGroup(group, el) {
+  if (hiddenGroups.has(group)) {
+    hiddenGroups.delete(group);
+    el.classList.add('active');
+  } else {
+    hiddenGroups.add(group);
+    el.classList.remove('active');
+  }
+  visNodes.forEach(n => {
+    if (n.group === group) {
+      visNodes.update({ id: n.id, hidden: hiddenGroups.has(group) });
+    }
+  });
+  visEdges.forEach(e => {
+    const from = visNodes.get(e.from);
+    const to = visNodes.get(e.to);
+    visEdges.update({ id: e.id, hidden: from?.hidden || to?.hidden });
+  });
+}
+
+// Detail panel
+const detailEl = document.getElementById('detail');
+const nodeMap = Object.fromEntries(nodes.map(n => [n.id, n]));
+
+function showDetail(id) {
+  const n = nodeMap[id];
+  if (!n) return;
+  const g = GROUPS[n.group];
+  const related = edges.filter(e => e.from === id || e.to === id).map(e => {
+    const other = e.from === id ? e.to : e.from;
+    const dir = e.from === id ? '→' : '←';
+    return { other, label: e.label, dir, node: nodeMap[other] };
+  });
+  let html = `<span class="type-badge" style="background:${g.color}33;color:${g.color}">${g.label}</span>`;
+  html += `<h2>${n.label}</h2>`;
+  if (n.desc) html += `<p class="desc">${n.desc}</p>`;
+  if (n.props) {
+    html += '<div class="props">';
+    for (const [k, v] of Object.entries(n.props)) {
+      html += `<div class="prop-row"><span class="prop-k">${k}</span><span class="prop-v">${v}</span></div>`;
+    }
+    html += '</div>';
+  }
+  if (related.length) {
+    html += '<div class="links"><b>关联关系</b>';
+    related.forEach(r => {
+      html += `<div class="link-item" data-id="${r.other}">${r.dir} ${r.label} ${r.dir === '→' ? '→' : '←'} ${r.node?.label || r.other}</div>`;
+    });
+    html += '</div>';
+  }
+  detailEl.innerHTML = html;
+  detailEl.querySelectorAll('.link-item').forEach(el => {
+    el.onclick = () => { network.selectNodes([el.dataset.id]); network.focus(el.dataset.id, { scale: 1.2, animation: true }); showDetail(el.dataset.id); };
+  });
+}
+
+network.on('click', p => { if (p.nodes.length) showDetail(p.nodes[0]); });
+
+// Search
+document.getElementById('search').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) { visNodes.forEach(n => visNodes.update({ id: n.id, opacity: 1 })); return; }
+  visNodes.forEach(n => {
+    const match = n.label.toLowerCase().includes(q) || (n.desc || '').toLowerCase().includes(q);
+    visNodes.update({ id: n.id, opacity: match ? 1 : 0.15 });
+  });
+  const matchId = nodes.find(n => n.label.toLowerCase().includes(q))?.id;
+  if (matchId) { network.selectNodes([matchId]); network.focus(matchId, { scale: 1.3, animation: true }); showDetail(matchId); }
+});
+
+document.getElementById('fit').onclick = () => network.fit({ animation: true });
+document.getElementById('reset').onclick = () => { network.stabilize(); network.fit({ animation: true }); hiddenGroups.clear(); legendEl.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); visNodes.forEach(n => visNodes.update({ id: n.id, hidden: false, opacity: 1 })); visEdges.forEach(e => visEdges.update({ id: e.id, hidden: false })); detailEl.innerHTML = '<div class="placeholder">点击图谱中的节点<br>查看属性与关系</div>'; document.getElementById('search').value = ''; };
+
+network.once('stabilizationIterationsDone', () => network.fit({ animation: true }));
+</script>
+</body>
+</html>
