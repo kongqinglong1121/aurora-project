@@ -1,0 +1,386 @@
+@prefix : <http://example.org/pod-dialing#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# ============================================================
+# Pod 拨打策略本体 · 金条外呼言犀赛马方案 v2
+# 2026-09-02
+# ============================================================
+
+<http://example.org/pod-dialing> rdf:type owl:Ontology ;
+    rdfs:label "Pod Dialing Strategy Ontology"@en ;
+    rdfs:label "Pod拨打策略本体"@zh ;
+    rdfs:comment "基于 pod拨打策略复盘0902.html 的本体论建模"@zh .
+
+# --- Top-level domain ---
+
+:OutboundCampaign rdf:type owl:Class ;
+    rdfs:label "外呼战役"@zh .
+
+:CallStrategy rdf:type owl:Class ;
+    rdfs:label "拨打策略"@zh .
+
+:LegacyStrategy rdf:type owl:Class ;
+    rdfs:subClassOf :CallStrategy ;
+    rdfs:label "言犀现行策略"@zh .
+
+:ModelBasedStrategy rdf:type owl:Class ;
+    rdfs:subClassOf :CallStrategy ;
+    rdfs:label "三模型赛马方案"@zh .
+
+:CallRecord rdf:type owl:Class ;
+    rdfs:label "话单"@zh .
+
+:User rdf:type owl:Class ;
+    rdfs:label "用户"@zh .
+
+# --- Touchpoint & lifecycle ---
+
+:TouchpointType rdf:type owl:Class ;
+    rdfs:label "触点类型"@zh .
+
+:FirstDial rdf:type owl:Class ;
+    rdfs:subClassOf :TouchpointType ;
+    rdfs:label "首播"@zh ;
+    rdfs:comment "dialed_before = 0"@zh .
+
+:RedialConnected rdf:type owl:Class ;
+    rdfs:subClassOf :TouchpointType ;
+    rdfs:label "已接通复播"@zh ;
+    rdfs:comment "dialed_before >= 1 AND conn_before >= 1"@zh .
+
+:RedialNotConnected rdf:type owl:Class ;
+    rdfs:subClassOf :TouchpointType ;
+    rdfs:label "未接通复播"@zh ;
+    rdfs:comment "dialed_before >= 1 AND conn_before = 0"@zh .
+
+:LifecycleStage rdf:type owl:Class ;
+    rdfs:label "生命周期阶段"@zh .
+
+:DialHistoryState rdf:type owl:Class ;
+    rdfs:label "拨打历史态"@zh .
+
+:IntentLabel rdf:type owl:Class ;
+    rdfs:label "意向标签"@zh .
+
+:DecisionDimension rdf:type owl:Class ;
+    rdfs:label "决策维度"@zh .
+
+:SchedulingRule rdf:type owl:Class ;
+    rdfs:label "调度规则"@zh .
+
+:StopCallRule rdf:type owl:Class ;
+    rdfs:label "停打规则"@zh .
+
+# --- Models ---
+
+:PredictiveModel rdf:type owl:Class ;
+    rdfs:label "预测模型"@zh .
+
+:TimeSlotModel rdf:type owl:Class ;
+    rdfs:subClassOf :PredictiveModel ;
+    rdfs:label "时点模型"@zh .
+
+:IntentModel rdf:type owl:Class ;
+    rdfs:subClassOf :PredictiveModel ;
+    rdfs:label "意向模型"@zh .
+
+:ConnectModel rdf:type owl:Class ;
+    rdfs:subClassOf :PredictiveModel ;
+    rdfs:label "接通模型"@zh .
+
+# --- Time & interval ---
+
+:TimeSlot rdf:type owl:Class ;
+    rdfs:label "时段"@zh .
+
+:TimeSlotRole rdf:type owl:Class ;
+    rdfs:label "时段角色"@zh .
+
+:GoldenIntent rdf:type owl:Class ;
+    rdfs:subClassOf :TimeSlotRole ;
+    rdfs:label "黄金意向"@zh .
+
+:LeftoverSink rdf:type owl:Class ;
+    rdfs:subClassOf :TimeSlotRole ;
+    rdfs:label "兜底剩饭"@zh .
+
+:RedialRound rdf:type owl:Class ;
+    rdfs:label "复拨轮次"@zh .
+
+:RedialInterval rdf:type owl:Class ;
+    rdfs:label "复拨间隔"@zh .
+
+# --- Analytics ---
+
+:Metric rdf:type owl:Class ;
+    rdfs:label "指标"@zh .
+
+:MetricObservation rdf:type owl:Class ;
+    rdfs:label "指标观测"@zh .
+
+:Insight rdf:type owl:Class ;
+    rdfs:label "洞察"@zh .
+
+:DataQualityIssue rdf:type owl:Class ;
+    rdfs:label "数据质量问题"@zh .
+
+# --- Dispatch & experiment ---
+
+:DispatchPipeline rdf:type owl:Class ;
+    rdfs:label "调度流水线"@zh .
+
+:CallList rdf:type owl:Class ;
+    rdfs:label "拨打清单"@zh .
+
+:PriorityScore rdf:type owl:Class ;
+    rdfs:label "优先级分"@zh .
+
+:Experiment rdf:type owl:Class ;
+    rdfs:label "赛马实验"@zh .
+
+:ImplementationTask rdf:type owl:Class ;
+    rdfs:label "落地待办"@zh .
+
+# --- Object properties ---
+
+:adoptsStrategy rdf:type owl:ObjectProperty ;
+    rdfs:domain :OutboundCampaign ;
+    rdfs:range :CallStrategy .
+
+:hasTouchpoint rdf:type owl:ObjectProperty ;
+    rdfs:domain :CallRecord ;
+    rdfs:range :TouchpointType .
+
+:belongsToUser rdf:type owl:ObjectProperty ;
+    rdfs:domain :CallRecord ;
+    rdfs:range :User .
+
+:occursInTimeSlot rdf:type owl:ObjectProperty ;
+    rdfs:domain :CallRecord ;
+    rdfs:range :TimeSlot .
+
+:usesModel rdf:type owl:ObjectProperty ;
+    rdfs:domain :ModelBasedStrategy ;
+    rdfs:range :PredictiveModel .
+
+:appliesToTouchpoint rdf:type owl:ObjectProperty ;
+    rdfs:domain :PredictiveModel ;
+    rdfs:range :TouchpointType .
+
+:hasSchedulingRule rdf:type owl:ObjectProperty ;
+    rdfs:domain :CallStrategy ;
+    rdfs:range :SchedulingRule .
+
+:hasStopRule rdf:type owl:ObjectProperty ;
+    rdfs:domain :CallStrategy ;
+    rdfs:range :StopCallRule .
+
+:producesInsight rdf:type owl:ObjectProperty ;
+    rdfs:domain :CallStrategy ;
+    rdfs:range :Insight .
+
+:causedBy rdf:type owl:ObjectProperty ;
+    rdfs:domain :Insight ;
+    rdfs:range :SchedulingRule .
+
+:observedIn rdf:type owl:ObjectProperty ;
+    rdfs:domain :MetricObservation ;
+    rdfs:range :Metric .
+
+:outputsCallList rdf:type owl:ObjectProperty ;
+    rdfs:domain :DispatchPipeline ;
+    rdfs:range :CallList .
+
+:assignedPriority rdf:type owl:ObjectProperty ;
+    rdfs:domain :CallRecord ;
+    rdfs:range :PriorityScore .
+
+:validates rdf:type owl:ObjectProperty ;
+    rdfs:domain :Experiment ;
+    rdfs:range :Insight .
+
+# --- Data properties ---
+
+:dialedBefore rdf:type owl:DatatypeProperty ;
+    rdfs:domain :CallRecord ;
+    rdfs:range xsd:integer .
+
+:connBefore rdf:type owl:DatatypeProperty ;
+    rdfs:domain :CallRecord ;
+    rdfs:range xsd:integer .
+
+:connectRate rdf:type owl:DatatypeProperty ;
+    rdfs:domain :MetricObservation ;
+    rdfs:range xsd:decimal .
+
+:convertRate rdf:type owl:DatatypeProperty ;
+    rdfs:domain :MetricObservation ;
+    rdfs:range xsd:decimal .
+
+:auc rdf:type owl:DatatypeProperty ;
+    rdfs:domain :PredictiveModel ;
+    rdfs:range xsd:decimal .
+
+:liftPp rdf:type owl:DatatypeProperty ;
+    rdfs:domain :MetricObservation ;
+    rdfs:range xsd:decimal .
+
+:sampleCount rdf:type owl:DatatypeProperty ;
+    rdfs:domain :MetricObservation ;
+    rdfs:range xsd:integer .
+
+:dailyCapacity rdf:type owl:DatatypeProperty ;
+    rdfs:domain :OutboundCampaign ;
+    rdfs:range xsd:integer .
+
+:priorityScore rdf:type owl:DatatypeProperty ;
+    rdfs:domain :PriorityScore ;
+    rdfs:range xsd:decimal .
+
+:pConnect rdf:type owl:DatatypeProperty ;
+    rdfs:domain :PriorityScore ;
+    rdfs:range xsd:decimal .
+
+:pConvert rdf:type owl:DatatypeProperty ;
+    rdfs:domain :PriorityScore ;
+    rdfs:range xsd:decimal .
+
+:userValue rdf:type owl:DatatypeProperty ;
+    rdfs:domain :User ;
+    rdfs:range xsd:decimal .
+
+:dataWindowDays rdf:type owl:DatatypeProperty ;
+    rdfs:domain :OutboundCampaign ;
+    rdfs:range xsd:integer .
+
+:severity rdf:type owl:DatatypeProperty ;
+    rdfs:domain :Insight ;
+    rdfs:range xsd:string .
+
+:rootCause rdf:type owl:DatatypeProperty ;
+    rdfs:domain :Insight ;
+    rdfs:range xsd:string .
+
+# ============================================================
+# Individuals (instances from source document)
+# ============================================================
+
+:JintiaoOutbound rdf:type :OutboundCampaign ;
+    rdfs:label "金条外呼"@zh ;
+    :dataWindowDays "35"^^xsd:integer ;
+    :dailyCapacity "200000"^^xsd:integer ;
+    :adoptsStrategy :HorseRaceV2 .
+
+:YanxiLegacy rdf:type :LegacyStrategy ;
+    rdfs:label "言犀现行策略"@zh ;
+    :hasSchedulingRule :FiveDimensionHardcode ,
+                       :EveningLeftoverFallback .
+
+:HorseRaceV2 rdf:type :ModelBasedStrategy ;
+    rdfs:label "言犀赛马方案 v2"@zh ;
+    :usesModel :TimeSlotModelInst ,
+               :IntentModelInst ,
+               :ConnectModelInst ;
+    :hasStopRule :IntentStopRule ,
+                 :HighRoundStopRule .
+
+:FiveDimensionHardcode rdf:type :SchedulingRule ;
+    rdfs:label "5维硬编码决策"@zh ;
+    rdfs:comment "触点×生命周期×拨打历史×意向×时间间隔"@zh .
+
+:EveningLeftoverFallback rdf:type :SchedulingRule ;
+    rdfs:label "18-19点兜底捞剩饭"@zh .
+
+:TimeSlotModelInst rdf:type :TimeSlotModel ;
+    rdfs:label "首播时点模型"@zh ;
+    :auc "0.0"^^xsd:decimal ;
+    :appliesToTouchpoint :FirstDial .
+
+:IntentModelInst rdf:type :IntentModel ;
+    rdfs:label "已接通意向模型"@zh ;
+    :auc "0.80"^^xsd:decimal ;
+    :appliesToTouchpoint :RedialConnected .
+
+:ConnectModelInst rdf:type :ConnectModel ;
+    rdfs:label "未接通接通模型"@zh ;
+    :auc "0.73"^^xsd:decimal ;
+    :appliesToTouchpoint :RedialNotConnected .
+
+:IntentStopRule rdf:type :StopCallRule ;
+    rdfs:label "低意向停打"@zh .
+
+:HighRoundStopRule rdf:type :StopCallRule ;
+    rdfs:label "第5次+低接通停打"@zh .
+
+:LeftoverScheduling rdf:type :Insight ;
+    rdfs:label "18点后剩饭洞察"@zh ;
+    :severity "critical" ;
+    :rootCause "编排把筛剩低质用户排到晚间，非时段本身差"@zh ;
+    :causedBy :EveningLeftoverFallback .
+
+:IntervalReversal rdf:type :Insight ;
+    rdfs:label "未接通复播间隔规律反转"@zh ;
+    :rootCause "分层前混淆用户难度与间隔效应"@zh .
+
+:LabelLeakage rdf:type :DataQualityIssue ;
+    rdfs:label "jtrk累计含本通标签泄露"@zh .
+
+:UnifiedDispatch rdf:type :DispatchPipeline ;
+    rdfs:label "三线统一调度"@zh ;
+    rdfs:comment "priority = p_connect × p_convert × user_value"@zh .
+
+:HorseRaceExperiment rdf:type :Experiment ;
+    rdfs:label "10天赛马实验"@zh ;
+    :validates :LeftoverScheduling .
+
+# Metric observations
+
+:ObsFirstDialConnect rdf:type :MetricObservation ;
+    :observedIn :ConnectRateMetric ;
+    :connectRate "0.2747"^^xsd:decimal ;
+    :sampleCount "1277000"^^xsd:integer .
+
+:ObsRedialConnectedConnect rdf:type :MetricObservation ;
+    :observedIn :ConnectRateMetric ;
+    :connectRate "0.4324"^^xsd:decimal ;
+    :sampleCount "834000"^^xsd:integer .
+
+:ObsRedialNotConnectedConnect rdf:type :MetricObservation ;
+    :observedIn :ConnectRateMetric ;
+    :connectRate "0.1013"^^xsd:decimal ;
+    :sampleCount "2357000"^^xsd:integer .
+
+:ObsFirstDialTimeSlotLift rdf:type :MetricObservation ;
+    :observedIn :ConnectRateMetric ;
+    :liftPp "9.59"^^xsd:decimal .
+
+:ConnectRateMetric rdf:type :Metric ;
+    rdfs:label "接通率"@zh .
+
+# Time slots
+
+:SlotMorning940 rdf:type :TimeSlot ;
+    rdfs:label "09:40-12:29"@zh .
+
+:SlotEvening1800 rdf:type :TimeSlot ;
+    rdfs:label "18:00-20:59"@zh .
+
+:RoleGolden rdf:type :GoldenIntent .
+:RoleLeftover rdf:type :LeftoverSink .
+
+# Implementation tasks
+
+:TaskPriorityNormalize rdf:type :ImplementationTask ;
+    rdfs:label "priority跨线归一化/三线产能配额"@zh .
+
+:TaskStopThreshold rdf:type :ImplementationTask ;
+    rdfs:label "停打阈值标定+概率校准"@zh .
+
+:TaskRound1Validation rdf:type :ImplementationTask ;
+    rdfs:label "第1次48-72h小流量验证"@zh .
+
+:TaskAlignRedialSelection rdf:type :ImplementationTask ;
+    rdfs:label "已接通复拨圈选条件全天拉齐"@zh .
