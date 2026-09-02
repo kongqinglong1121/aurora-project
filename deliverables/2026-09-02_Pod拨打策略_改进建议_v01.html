@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>金条外呼拨打策略 · 数据科学改进建议</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#ffffff; --ink:#2b2f36; --sub:#6b7280;
+    --line:#eceef1; --brand:#3b6fe0; --brand-soft:#eef3fe;
+    --green:#2e9e6b; --green-soft:#e9f7f0; --red:#d1584f; --red-soft:#fbeeed;
+    --amber:#c98a12; --amber-soft:#fdf5e6; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.7;font-size:15px;}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px;}
+  header.hero{text-align:center;padding:48px 24px 40px;}
+  header.hero h1{font-size:30px;margin:0 0 12px;letter-spacing:.5px;}
+  header.hero p{color:var(--sub);margin:4px 0;font-size:15px;}
+  .badge{display:inline-block;background:var(--brand-soft);color:var(--brand);
+    padding:4px 14px;border-radius:20px;font-size:13px;margin-top:14px;margin-left:6px;}
+  section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:28px 30px;margin:22px 0;box-shadow:0 1px 3px rgba(0,0,0,.03);}
+  h2{font-size:21px;margin:0 0 6px;display:flex;align-items:center;gap:10px;}
+  h2 .num{background:var(--brand);color:#fff;width:30px;height:30px;border-radius:8px;
+    display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex:0 0 auto;}
+  h2 + .lead{color:var(--sub);margin:0 0 20px;font-size:14px;}
+  h3{font-size:16px;margin:24px 0 10px;color:var(--ink);border-left:3px solid var(--brand);
+    padding-left:10px;}
+  h4{font-size:14px;margin:16px 0 8px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:center;}
+  th{background:#fafbfc;font-weight:600;color:var(--ink);}
+  td.l,th.l{text-align:left;}
+  tr:nth-child(even) td{background:#fcfcfd;}
+  .best{background:var(--green-soft)!important;color:var(--green);font-weight:700;}
+  .bad{background:var(--red-soft)!important;color:var(--red);}
+  .tag{display:inline-block;padding:2px 9px;border-radius:6px;font-size:12px;font-weight:600;}
+  .tag.g{background:var(--green-soft);color:var(--green);}
+  .tag.r{background:var(--red-soft);color:var(--red);}
+  .tag.a{background:var(--amber-soft);color:var(--amber);}
+  .tag.b{background:var(--brand-soft);color:var(--brand);}
+  .tag.p{background:#f3e8ff;color:#7c3aed;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0;}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:16px 0;}
+  .kpi{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:16px;text-align:center;}
+  .kpi .v{font-size:26px;font-weight:700;color:var(--brand);}
+  .kpi .v.g{color:var(--green);} .kpi .v.r{color:var(--red);} .kpi .v.a{color:var(--amber);}
+  .kpi .k{font-size:13px;color:var(--sub);margin-top:4px;}
+  .callout{border-radius:10px;padding:14px 16px;margin:14px 0;font-size:14px;}
+  .callout.b{background:var(--brand-soft);border-left:4px solid var(--brand);}
+  .callout.g{background:var(--green-soft);border-left:4px solid var(--green);}
+  .callout.a{background:var(--amber-soft);border-left:4px solid var(--amber);}
+  .callout.r{background:var(--red-soft);border-left:4px solid var(--red);}
+  .callout b{color:var(--ink);}
+  pre{background:#2b2f36;color:#e6e8eb;border-radius:10px;padding:16px 18px;
+    overflow-x:auto;font-size:13px;line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace;}
+  pre .c{color:#7f8794;} pre .k{color:#c58af9;} pre .s{color:#8fd67a;}
+  code.inl{background:#eef0f3;padding:1px 6px;border-radius:5px;font-size:13px;
+    font-family:"SF Mono",Menlo,Consolas,monospace;color:var(--red);}
+  ul{margin:8px 0;padding-left:22px;} li{margin:5px 0;}
+  ol{margin:8px 0;padding-left:22px;} ol li{margin:6px 0;}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:16px 0;}
+  .flow .step{background:var(--brand-soft);color:var(--brand);padding:8px 14px;
+    border-radius:8px;font-size:13px;font-weight:600;}
+  .flow .arr{color:var(--sub);font-size:18px;}
+  .foot{text-align:center;color:var(--sub);font-size:13px;margin-top:30px;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 24px;margin:22px 0;}
+  .toc h3{border:none;padding:0;margin:0 0 12px;font-size:15px;}
+  .toc ol{font-size:14px;color:var(--sub);}
+  .toc a{color:var(--brand);text-decoration:none;}
+  .toc a:hover{text-decoration:underline;}
+  .phase{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);}
+  .phase:last-child{border-bottom:none;}
+  .phase-id{background:var(--brand);color:#fff;font-size:12px;font-weight:700;
+    padding:4px 10px;border-radius:6px;flex:0 0 auto;margin-top:2px;}
+  .phase-body{flex:1;}
+  .phase-body b{font-size:14px;}
+  .phase-body p{margin:4px 0 0;font-size:13px;color:var(--sub);}
+  @media print{
+    body{background:#fff;}
+    section{break-inside:avoid;box-shadow:none;}
+    .wrap{padding:20px;}
+  }
+  @media(max-width:760px){.grid,.grid2,.two{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>金条外呼拨打策略 · 数据科学改进建议</h1>
+  <p>基于言犀赛马方案 v2 复盘 · 现金贷营销领域视角</p>
+  <p style="font-size:13px;">进一步提升拨打效果 · 模型 / 调度 / 数据 / 实验 / 治理</p>
+  <span class="badge">视角：数据科学家</span>
+  <span class="badge">日期：2026-09-02</span>
+  <span class="badge">可独立分发</span>
+</header>
+
+<nav class="toc">
+  <h3>目录</h3>
+  <ol>
+    <li><a href="#s0">总体判断</a></li>
+    <li><a href="#s1">最高优先级：调度公平性与目标函数</a></li>
+    <li><a href="#s2">模型层：三模型之外还缺什么</a></li>
+    <li><a href="#s3">数据与特征：before 口径只是起点</a></li>
+    <li><a href="#s4">策略层：剩饭之外的隐性浪费</a></li>
+    <li><a href="#s5">实验与评估：别只比 15 天名转率</a></li>
+    <li><a href="#s6">工程与治理：决定能否规模化</a></li>
+    <li><a href="#s7">改进路线图（按 ROI 排序）</a></li>
+    <li><a href="#s8">三个核心结论</a></li>
+    <li><a href="#s9">建议下一步</a></li>
+  </ol>
+</nav>
+
+<!-- 0 -->
+<section id="s0">
+  <h2><span class="num">0</span>总体判断</h2>
+  <p class="lead">v2 方案方向正确，但若要「进一步提升拨打效果」，需在 6 个层面继续深化。</p>
+
+  <div class="callout g">
+    <b>v2 方案做对了什么：</b>
+    <ul>
+      <li>从「规则顺序」切到「统一 priority + 模型决策」</li>
+      <li>识别 18 点后不是时段差，而是<strong>剩饭编排差</strong></li>
+      <li>未接通复播间隔按轮次分层（第 1 次等 2–3 天，第 2 次起当天追）</li>
+      <li>标签泄露修复（before 口径），离线结论可信</li>
+    </ul>
+  </div>
+
+  <div class="grid">
+    <div class="kpi"><div class="v g">P0</div><div class="k">调度公平 + 目标函数</div></div>
+    <div class="kpi"><div class="v a">P1</div><div class="k">模型补全 + 间隔个性化</div></div>
+    <div class="kpi"><div class="v r">P2</div><div class="k">首播落地率 6%→20%+</div></div>
+  </div>
+
+  <div class="callout b">
+    <b>改进空间分层：</b>调度公平性 → 目标函数 → 模型补全 → 实时重排 → 多渠道联合 → 长期 LTV 治理。
+    其中<strong>首播落地率</strong>是当前最大业务杠杆，而非下午时段扩展。
+  </div>
+</section>
+
+<!-- 1 -->
+<section id="s1">
+  <h2><span class="num">1</span>最高优先级：调度公平性与目标函数</h2>
+  <p class="lead">priority 不能只做乘法；目标函数应从过程指标升级为期望利润。</p>
+
+  <h3>1.1 priority 需「分类型校准 + 产能配额」</h3>
+  <p>文档已指出：三类触点 <code class="inl">p_convert</code> 量级差异大，已接通复播会垄断 20 万清单。</p>
+  <table>
+    <tr><th class="l">方案</th><th class="l">做法</th><th class="l">目的</th></tr>
+    <tr>
+      <td class="l">A. 类型内分位归一化</td>
+      <td class="l">各触点内将 p_convert 映射到 [0,1] 分位</td>
+      <td class="l">跨线可比</td>
+    </tr>
+    <tr>
+      <td class="l">B. 产能配额</td>
+      <td class="l">首播 ≥40%、未接通 ≥25% 等硬约束</td>
+      <td class="l">保新客与触达</td>
+    </tr>
+    <tr>
+      <td class="l">C. 分层 priority</td>
+      <td class="l">priority = w_type × p_connect × p_convert × value</td>
+      <td class="l">显式控权重</td>
+    </tr>
+  </table>
+  <div class="callout a">
+    <b>现金贷特有考量：</b>首播用户是 LTV 漏斗入口。若被已接通复播挤掉，短期转化可能升，长期放款规模会掉。
+    quota 不是工程补丁，是<strong>业务约束</strong>。
+  </div>
+
+  <h3>1.2 目标函数：从「接通×转化×价值」到「期望放款利润」</h3>
+  <p>当前公式偏过程指标，未显式纳入：额度/定价差异、投诉/退订风险、多次拨打的用户损耗成本。</p>
+  <pre><span class="c"># 建议目标函数</span>
+E[profit] = P(接通) × P(转化|接通) × E[放款金额|转化] × take_rate
+           − λ₁ × P(投诉) − λ₂ × dial_cost × dial_count</pre>
+  <p>停打、间隔、时段选择都应在该框架下联合优化，而非各模型各管一段。</p>
+</section>
+
+<!-- 2 -->
+<section id="s2">
+  <h2><span class="num">2</span>模型层：三模型之外还缺什么</h2>
+  <p class="lead">时点 / 意向 / 接通三模型是正确起点，但还缺 3 个关键能力。</p>
+
+  <div class="two">
+    <div>
+      <h3>2.1 补「转化条件模型」</h3>
+      <p>首播/未接通复播的 p_convert 用 30 天历史常数，会系统性偏差：</p>
+      <ul>
+        <li>高价值新客 vs 低价值老客</li>
+        <li>不同生命周期 T0/T3/T7</li>
+        <li>不同渠道来源</li>
+      </ul>
+      <p><b>建议：</b>至少做触点内轻量转化模型（Logistic/LightGBM），特征含生命周期、渠道、历史行为、时段、拨打轮次。</p>
+    </div>
+    <div>
+      <h3>2.2 「最优下次拨打时间」模型</h3>
+      <p>48–72h / &lt;12h 规则表是强 baseline，仍是人群平均策略。</p>
+      <ul>
+        <li>目标：预测 P(接通 | Δt, features)</li>
+        <li>输出：每个用户的最优 Δt*</li>
+        <li>与规则表 ensemble：规则保底，模型微调 ±6h</li>
+      </ul>
+      <p><b>注意：</b>第 1 次「等 2–3 天」须防幸存者偏差，上线前 PSM 或小流量 A/B。</p>
+    </div>
+  </div>
+
+  <h3>2.3 意向模型拆成「转化 + 可挽回性 + 投诉」</h3>
+  <table>
+    <tr><th class="l">用户类型</th><th class="l">策略含义</th></tr>
+    <tr><td class="l">高意向未转化</td><td class="l best">值得复拨</td></tr>
+    <tr><td class="l">低意向高价值</td><td class="l">换话术/时段仍值得触达</td></tr>
+    <tr><td class="l">投诉倾向</td><td class="l bad">硬停打</td></tr>
+  </table>
+  <div class="callout b">
+    <b>建议：</b>多任务学习 P(转化) + P(投诉) + P(秒挂)，停打用约束优化而非单阈值。
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="s3">
+  <h2><span class="num">3</span>数据与特征：before 口径只是起点</h2>
+  <p class="lead">特征体系需补「营销状态机」，并建立实时特征闭环。</p>
+
+  <h3>3.1 特征体系补全</h3>
+  <table>
+    <tr><th class="l">特征类</th><th class="l">示例</th><th class="l">价值</th></tr>
+    <tr><td class="l">时间节律</td><td class="l">历史接通时段分布、工作日/发薪日</td><td class="l">个性化时段</td></tr>
+    <tr><td class="l">竞争暴露</td><td class="l">近 7 天被其他产品触达次数</td><td class="l">防过度营销</td></tr>
+    <tr><td class="l">响应衰减</td><td class="l">每多打 1 次，下次接通率衰减曲线</td><td class="l">动态停打</td></tr>
+    <tr><td class="l">话术/线路</td><td class="l">不同线路/坐席/话术版本 uplift</td><td class="l">策略联动</td></tr>
+    <tr><td class="l">外部信号</td><td class="l">App 活跃、授信页访问、额度查询</td><td class="l">实时意向</td></tr>
+  </table>
+  <div class="callout g">
+    <b>现金贷关键：</b>App 内行为往往比 IVR 意向更准，应纳入 priority 打分。
+  </div>
+
+  <h3>3.2 实时特征闭环</h3>
+  <p>次日 20 万清单是 T-1 离线产出，但白天会出现：用户上午已 App 登录、中午被其他渠道触达、下午授信状态变化。</p>
+  <div class="callout b">
+    <b>建议：</b>清单分<strong>早/中/晚三批动态重排</strong>（re-ranking），而非一次定死。增量成本低，收益通常明显。
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="s4">
+  <h2><span class="num">4</span>策略层：剩饭之外的隐性浪费</h2>
+  <p class="lead">除 18 点剩饭编排外，还有 4 个常被忽视的浪费点。</p>
+
+  <h3>4.1 未接通复播：调间隔 + 换时段/换线路</h3>
+  <table>
+    <tr><th>轮次</th><th class="l">建议动作</th></tr>
+    <tr><td>第 1 次未接</td><td class="l">48–72h 后换时段（非简单重拨）</td></tr>
+    <tr><td>第 2 次</td><td class="l">换线路/换外显号（若合规允许）</td></tr>
+    <tr><td>第 3 次</td><td class="l">换话术模板（短提醒 vs 利益点）</td></tr>
+  </table>
+
+  <h3>4.2 已接通复播：从「砍低意向」到「下一步最佳动作」</h3>
+  <div class="flow">
+    <span class="step">高意向用户</span><span class="arr">→</span>
+    <span class="step">外呼 / 短信 / App Push</span><span class="arr">→</span>
+    <span class="step">人工坐席</span><span class="arr">→</span>
+    <span class="step">等待发薪日</span>
+  </div>
+  <p>触点决策应升级为 <b>Channel + Time + Action</b> 联合优化，外呼只是动作空间之一。</p>
+
+  <h3>4.3 首播：瓶颈是落地率 6%，不是下午时段</h3>
+  <div class="grid">
+    <div class="kpi"><div class="v r">6%</div><div class="k">当前首播落地率</div></div>
+    <div class="kpi"><div class="v g">20%+</div><div class="k">建议目标落地率</div></div>
+    <div class="kpi"><div class="v a">1→2→3</div><div class="k">落地率→时点→扩时段</div></div>
+  </div>
+  <div class="callout r">
+    <b>改进顺序：</b>① 落地率 6%→20%+（名单准入、去重、黑名单、频控、渠道质量）
+    → ② 再在可达人群中做上午时点精选 → ③ 最后才考虑扩时段。
+    若落地率不升，时点模型只在 6% 小池子里优化，天花板很低。
+  </div>
+
+  <h3>4.4 生命周期差异化</h3>
+  <p>T0 / T3 / T7 / T10 用户最优间隔和时段不同。建议在 priority 中加 lifecycle_stage 交互项，或分生命周期子模型。</p>
+</section>
+
+<!-- 5 -->
+<section id="s5">
+  <h2><span class="num">5</span>实验与评估：别只比 15 天名转率</h2>
+  <p class="lead">主指标、实验设计、探索机制都需要升级。</p>
+
+  <h3>5.1 主指标分层</h3>
+  <table>
+    <tr><th class="l">层级</th><th class="l">指标</th><th class="l">说明</th></tr>
+    <tr><td class="l">过程</td><td class="l">接通率、人均拨打次数、坐席利用率</td><td class="l">效率</td></tr>
+    <tr><td class="l">核心</td><td class="l">名转率、放款率、件均、Take rate</td><td class="l">效果</td></tr>
+    <tr><td class="l">长期</td><td class="l">7/30 天 LTV、复借率、投诉率</td><td class="l">可持续</td></tr>
+    <tr><td class="l">公平</td><td class="l">各触点/各生命周期增量 uplift</td><td class="l">防偏科</td></tr>
+  </table>
+  <div class="callout a">
+    <b>现金贷陷阱：</b>短期砍掉低意向剩饭，名转率可能升，但可触达池缩小后下一周期候选变少。
+    需同时看 <strong>rolling 7 天放款量</strong>。
+  </div>
+
+  <h3>5.2 实验设计补三项</h3>
+  <ol>
+    <li><b>分层随机：</b>按生命周期 × 价值 × 历史拨打次数分层，防基线不平衡</li>
+    <li><b>CUPED 方差缩减：</b>35 天话单足够做协变量调整，10 天实验 power 可能不足</li>
+    <li><b>剩饭专项验证：</b>18–20 点已接通复播转化率 — 验证「编排差非时段差」的核心假设</li>
+  </ol>
+
+  <h3>5.3 探索流量：定向探索而非随机乱打</h3>
+  <p>10% 探索应补模型不确定区域：第 1 次复拨 24h vs 72h 边界、低意向高价值用户、冷门时段。</p>
+  <p><b>建议：</b>Thompson Sampling / UCB bandit，比固定 10% 随机探索更高效。</p>
+</section>
+
+<!-- 6 -->
+<section id="s6">
+  <h2><span class="num">6</span>工程与治理：决定能否规模化</h2>
+  <p class="lead">概率校准、反事实评估、合规护栏是长期运行的基础。</p>
+
+  <div class="two">
+    <div>
+      <h3>6.1 概率校准分维度</h3>
+      <ul>
+        <li>首播 / 已接通 / 未接通<strong>分开校准</strong></li>
+        <li>上午 / 下午<strong>分开校准</strong>（样本够时）</li>
+        <li>监控 PSI / 校准曲线漂移，Weekly 重训触发</li>
+      </ul>
+      <pre><span class="c"># 降采样后校准</span>
+p_true = p·r / (p·r + 1 − p)</pre>
+    </div>
+    <div>
+      <h3>6.2 反事实评估框架</h3>
+      <ul>
+        <li>Propensity model：估计「被拨打」概率</li>
+        <li>IPS/DR 评估：评估策略增量</li>
+        <li>Shadow mode：新策略只打分不执行，对比 1–2 周</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>6.3 合规与用户体验护栏（现金贷必做）</h3>
+  <table>
+    <tr><th class="l">护栏</th><th class="l">内容</th></tr>
+    <tr><td class="l">频控</td><td class="l">单日/单周触达上限（监管 + 品牌）</td></tr>
+    <tr><td class="l">硬约束</td><td class="l">投诉/拒接/秒挂自动停打</td></tr>
+    <tr><td class="l">敏感人群</td><td class="l">逾期、投诉倾向自动剔除</td></tr>
+    <tr><td class="l">可解释性</td><td class="l">每个用户为何被拨/停拨（审计需要）</td></tr>
+  </table>
+</section>
+
+<!-- 7 -->
+<section id="s7">
+  <h2><span class="num">7</span>改进路线图（按 ROI 排序）</h2>
+  <p class="lead">分阶段推进，先稳 baseline，再攻最大杠杆。</p>
+
+  <div class="flow" style="justify-content:center;margin-bottom:20px;">
+    <span class="step">P0 数据可信</span><span class="arr">→</span>
+    <span class="step">P1 调度公平</span><span class="arr">→</span>
+    <span class="step">P2 目标函数</span><span class="arr">→</span>
+    <span class="step">P3 模型补全</span><span class="arr">→</span>
+    <span class="step">P4 实时重排</span><span class="arr">→</span>
+    <span class="step">P5 多渠道</span>
+  </div>
+
+  <div class="phase">
+    <span class="phase-id">P0</span>
+    <div class="phase-body">
+      <b>priority 归一化 + 三线配额 + 停打校准</b>
+      <p>动作：类型内分位归一化、首播≥40% 配额、概率校准 | 预期：防偏科，稳 baseline | 周期：1–2 周</p>
+    </div>
+  </div>
+  <div class="phase">
+    <span class="phase-id">P1</span>
+    <div class="phase-body">
+      <b>未接通轮次化间隔上线 + 低意向停打</b>
+      <p>动作：第 1 次 48–72h、第 2 次起 &lt;12h、INTENT_STOP_THRESHOLD | 预期：接通率 +2~5pp | 周期：2–3 周</p>
+    </div>
+  </div>
+  <div class="phase">
+    <span class="phase-id">P2</span>
+    <div class="phase-body">
+      <b>首播落地率治理（6% → 20%+）</b>
+      <p>动作：名单准入漏斗拆解、去重/黑名单/频控/渠道质量 | 预期：<span class="tag r">最大增量</span> | 周期：4–8 周</p>
+    </div>
+  </div>
+  <div class="phase">
+    <span class="phase-id">P3</span>
+    <div class="phase-body">
+      <b>转化模型替代历史常数 + Δt 个性化</b>
+      <p>动作：触点内转化模型、最优拨打时间模型 | 预期：名转率 +1~3pp | 周期：4–6 周</p>
+    </div>
+  </div>
+  <div class="phase">
+    <span class="phase-id">P4</span>
+    <div class="phase-body">
+      <b>日内动态重排 + 实时行为特征</b>
+      <p>动作：早/中/晚三批 re-ranking、App 行为特征 | 预期：额外 +0.5~2pp | 周期：6–8 周</p>
+    </div>
+  </div>
+  <div class="phase">
+    <span class="phase-id">P5</span>
+    <div class="phase-body">
+      <b>多渠道联合优化 + LTV 目标</b>
+      <p>动作：外呼/短信/App 联合决策、期望利润目标函数 | 预期：长期利润最大化 | 周期：持续</p>
+    </div>
+  </div>
+
+  <h3>预期收益汇总</h3>
+  <table>
+    <tr><th class="l">阶段</th><th class="l">核心动作</th><th>预期收益</th><th>周期</th></tr>
+    <tr><td class="l">P0</td><td class="l">调度公平 + 校准</td><td>稳 baseline</td><td>1–2 周</td></tr>
+    <tr><td class="l">P1</td><td class="l">间隔 + 停打</td><td class="best">接通率 +2~5pp</td><td>2–3 周</td></tr>
+    <tr><td class="l">P2</td><td class="l">落地率治理</td><td class="best">最大增量</td><td>4–8 周</td></tr>
+    <tr><td class="l">P3</td><td class="l">模型补全</td><td class="best">名转率 +1~3pp</td><td>4–6 周</td></tr>
+    <tr><td class="l">P4</td><td class="l">实时重排</td><td>+0.5~2pp</td><td>6–8 周</td></tr>
+    <tr><td class="l">P5</td><td class="l">多渠道 + LTV</td><td>长期利润</td><td>持续</td></tr>
+  </table>
+</section>
+
+<!-- 8 -->
+<section id="s8">
+  <h2><span class="num">8</span>三个核心结论</h2>
+  <p class="lead">可直接向业务层传达的判断。</p>
+
+  <div class="grid">
+    <div class="kpi" style="text-align:left;padding:20px;">
+      <div class="v r" style="font-size:18px;text-align:left;">结论 1</div>
+      <div class="k" style="text-align:left;margin-top:10px;font-size:14px;color:var(--ink);">
+        <b>最大杠杆不是下午扩时段，而是首播落地率 6%</b> — 这是整个漏斗的 choke point。
+      </div>
+    </div>
+    <div class="kpi" style="text-align:left;padding:20px;">
+      <div class="v a" style="font-size:18px;text-align:left;">结论 2</div>
+      <div class="k" style="text-align:left;margin-top:10px;font-size:14px;color:var(--ink);">
+        <b>v2 最大价值在「统一 priority 消灭剩饭编排」</b>，比微调间隔更重要；间隔优化是第二梯队红利。
+      </div>
+    </div>
+    <div class="kpi" style="text-align:left;padding:20px;">
+      <div class="v g" style="font-size:18px;text-align:left;">结论 3</div>
+      <div class="k" style="text-align:left;margin-top:10px;font-size:14px;color:var(--ink);">
+        <b>下一竞争壁垒在「实时状态 + 期望利润目标 + 多渠道」</b>，单纯三模型离线打分易被复制。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="s9">
+  <h2><span class="num">9</span>建议下一步（二选一优先启动）</h2>
+  <p class="lead">若资源有限，建议从以下两项中选一项立即启动。</p>
+
+  <div class="two">
+    <div class="callout b">
+      <b>选项 A：Priority 归一化 + 配额方案设计</b>
+      <ul>
+        <li>各触点 p_convert 分位归一化方法</li>
+        <li>首播 / 已接通 / 未接通目标占比</li>
+        <li>与现有 20 万产能约束的对齐</li>
+      </ul>
+      <span class="tag b">推荐：工程改动小、见效快</span>
+    </div>
+    <div class="callout g">
+      <b>选项 B：首播落地率漏斗拆解</b>
+      <ul>
+        <li>6% 损失分布：准入 / 去重 / 频控 / 渠道 / 系统</li>
+        <li>各环节可挽回量级估算</li>
+        <li>治理优先级与责任方</li>
+      </ul>
+      <span class="tag g">推荐：业务杠杆最大</span>
+    </div>
+  </div>
+</section>
+
+<div class="foot">
+  金条外呼拨打策略 · 数据科学改进建议 · 内部技术材料<br>
+  基于言犀赛马方案 v2 复盘 · 2026-09-02 · 可独立分发（浏览器打开或打印为 PDF）
+</div>
+
+</div>
+</body>
+</html>
